@@ -46,6 +46,8 @@ class CommonVariables:
     PassphraseFileNameKey = 'BekFileName'
     KeyEncryptionKeyURLKey = 'KeyEncryptionKeyURL'
     KeyVaultURLKey = 'KeyVaultURL'
+    KeyVaultResourceIdKey = 'KeyVaultResourceId'
+    KekVaultResourceIdKey = 'KekVaultResourceId'
     AADClientIDKey = 'AADClientID'
     AADClientCertThumbprintKey = 'AADClientCertThumbprint'
     KeyEncryptionAlgorithmKey = 'KeyEncryptionAlgorithm'
