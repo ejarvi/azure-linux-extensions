@@ -46,7 +46,7 @@ class KeyVaultUtil(object):
     The Passphrase is a plain encoded string. before the encryption it would be base64encoding.
     return the secret uri if creation successfully.
     """
-    def create_kek_secret(self, Passphrase, KeyVaultURL, KeyEncryptionKeyURL, AADClientID, AADClientCertThumbprint, KeyEncryptionAlgorithm, AADClientSecret, DiskEncryptionKeyFileName):
+    def create_kek_secret(self, Passphrase, KeyVaultURL, KeyVaultResourceId, KeyEncryptionKeyURL, KekVaultResourceId, AADClientID, AADClientCertThumbprint, KeyEncryptionAlgorithm, AADClientSecret, DiskEncryptionKeyFileName):
         try:
             self.logger.log("start creating kek secret")
             passphrase_encoded = base64.standard_b64encode(Passphrase)

@@ -251,7 +251,9 @@ def update_encryption_settings():
 
             kek_secret_id_created = keyVaultUtil.create_kek_secret(Passphrase=extension_parameter.passphrase,
                                                                    KeyVaultURL=extension_parameter.KeyVaultURL,
+                                                                   KeyVaultResourceId=extension_parameter.KeyVaultResourceId,
                                                                    KeyEncryptionKeyURL=extension_parameter.KeyEncryptionKeyURL,
+                                                                   KekVaultResourceId=extension_parameter.KekVaultResourceId,
                                                                    AADClientID=extension_parameter.AADClientID,
                                                                    AADClientCertThumbprint=extension_parameter.AADClientCertThumbprint,
                                                                    KeyEncryptionAlgorithm=extension_parameter.KeyEncryptionAlgorithm,
@@ -656,7 +658,9 @@ def enable_encryption():
 
                     kek_secret_id_created = keyVaultUtil.create_kek_secret(Passphrase=extension_parameter.passphrase,
                                                                            KeyVaultURL=extension_parameter.KeyVaultURL,
+                                                                           KeyVaultResourceId=extension_parameter.KeyVaultResourceId,
                                                                            KeyEncryptionKeyURL=extension_parameter.KeyEncryptionKeyURL,
+                                                                           KekVaultResourceId=extension_parameter.KekVaultResourceId,
                                                                            AADClientID=extension_parameter.AADClientID,
                                                                            AADClientCertThumbprint=extension_parameter.AADClientCertThumbprint,
                                                                            KeyEncryptionAlgorithm=extension_parameter.KeyEncryptionAlgorithm,
