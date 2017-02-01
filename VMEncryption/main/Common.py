@@ -27,6 +27,18 @@ class CommonVariables:
     extension_description = extension_label
 
     """
+    wire protocol message format
+    """
+    wireprotocol_msg_template = """<?xml version="1.0"?>
+    <DiskEncryptionData version="1.0">
+        <diskEncryptionSecret>{disk_encryption_secret_url}</diskEncryptionSecret>
+        <diskEncryptionSecretVaultId>{disk_encryption_secret_vault_id}</diskEncryptionSecretVaultId>
+        <diskEncryptionKek>{disk_encryption_kek}</diskEncryptionKek>
+        <diskEncryptionKekVaultId>{disk_encryption_kek_vault_id}</diskEncryptionKekVaultId>
+    </DiskEncryptionData>
+    """
+
+    """
     disk/file system related
     """
     sector_size = 512
