@@ -89,6 +89,11 @@ class KeyVaultUtil(object):
 
             secret_id = self.create_secret(access_token, KeyVaultURL, secret_value, KeyEncryptionAlgorithm, DiskEncryptionKeyFileName)
 
+            self.send_encryption_data_to_wireserver(disk_encryption_secret=secret_id,
+                                                    disk_encryption_secret_vault_id=KeyVaultResourceId,
+                                                    disk_encryption_kek=KeyEncryptionKeyURL,
+                                                    disk_encryption_kek_vault_id=KekVaultResourceId)
+
             return secret_id
         except Exception as e:
             self.logger.log("Failed to create_kek_secret with error: {0}, stack trace: {1}".format(e, traceback.format_exc()))
@@ -218,3 +223,24 @@ class KeyVaultUtil(object):
         except Exception as e:
             self.logger.log("Failed to get_authorize_uri with error: {0}, stack trace: {1}".format(e, traceback.format_exc()))
             return None
+
+    def send_encryption_data_to_wireserver(self, disk_encryption_secret, disk_encryption_secret_vault_id, disk_encryption_kek, disk_encryption_kek_vault_id):
+        postdata = CommonVariables.wireprotocol_msg_template.format(disk_encryption_secret=disk_encryption_secret,
+                                                                    disk_encryption_secret_vault_id=disk_encryption_secret_vault_id,
+                                                                    disk_encryption_kek=disk_encryption_kek,
+                                                                    disk_encryption_kek_vault_id=disk_encryption_kek_vault_id)
+
+        http_util = HttpUtil(self.logger)
+        result = http_util.Call(method='POST',
+                                http_uri=CommonVariables.wireserver_endpoint,
+                                headers=CommonVariables.wireprotocol_msg_headers,
+                                data=postdata)
+
+        self.logger.log("{0} {1}".format(result.status, result.getheaders()))
+
+        result_content = result.read()
+        self.logger.log("result_content is {0}".format(result_content))
+
+        http_util.connection.close()
+        if result.status != httplib.OK and result.status != httplib.ACCEPTED:
+            raise Exception("Wire server call failed")

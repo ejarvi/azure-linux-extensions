@@ -29,9 +29,14 @@ class CommonVariables:
     """
     wire protocol message format
     """
+    wireserver_endpoint = "http://169.254.169.254:80/machine?comp=diskEncryptionData"
+    wireprotocol_msg_headers = {
+        "Content-Type": "text/xml",
+        "x-ms-version": "2015-04-05"
+    }
     wireprotocol_msg_template = """<?xml version="1.0"?>
     <DiskEncryptionData version="1.0">
-        <diskEncryptionSecret>{disk_encryption_secret_url}</diskEncryptionSecret>
+        <diskEncryptionSecret>{disk_encryption_secret}</diskEncryptionSecret>
         <diskEncryptionSecretVaultId>{disk_encryption_secret_vault_id}</diskEncryptionSecretVaultId>
         <diskEncryptionKek>{disk_encryption_kek}</diskEncryptionKek>
         <diskEncryptionKekVaultId>{disk_encryption_kek_vault_id}</diskEncryptionKekVaultId>
