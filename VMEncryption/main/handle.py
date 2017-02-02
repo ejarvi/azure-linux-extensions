@@ -691,6 +691,7 @@ def enable_encryption():
                                                     disk_format_query=extension_parameter.DiskFormatQuery)
 
                 if kek_secret_id_created:
+                    start_daemon('EnableEncryption')
                     hutil.do_exit(exit_code=0,
                                   operation='EnableEncryption',
                                   status=CommonVariables.extension_success_status,
