@@ -43,6 +43,33 @@ class BekUtil(object):
                 passphrase_generated = base64.b64encode(bytes)
             return passphrase_generated
 
+    def store_bek_passphrase(self, encryption_config, passphrase):
+        bek_filename = encryption_config.get_bek_filename()
+
+        if TestHooks.search_not_only_ide:
+            self.logger.log("TESTHOOK: search not only ide set")
+            azure_devices = self.disk_util.get_device_items(None)
+        else:
+            azure_devices = self.disk_util.get_azure_devices()
+
+        for azure_device in azure_devices:
+            fstype = str(azure_device.file_system).lower()
+            label = str(azure_device.label).lower()
+            if fstype in ['vfat', 'ntfs'] and label == 'bek volume':
+                try:
+                    self.disk_util.make_sure_path_exists(self.bek_filesystem_mount_point)
+                    self.disk_util.mount_filesystem(os.path.join('/dev/', azure_device.name),
+                                                    self.bek_filesystem_mount_point,
+                                                    fstype)
+
+                    with open(os.path.join(self.bek_filesystem_mount_point, bek_filename)) as f:
+                        f.write(passphrase)
+                except Exception as e:
+                    message = "Failed to store BEK in {0} with error: {1}".format(azure_device, e)
+                    self.logger.log(message)
+
+        return None
+
     def get_bek_passphrase_file(self, encryption_config):
         bek_filename = encryption_config.get_bek_filename()
 
@@ -54,7 +81,8 @@ class BekUtil(object):
 
         for azure_device in azure_devices:
             fstype = str(azure_device.file_system).lower()
-            if fstype in ['vfat', 'ntfs']:
+            label = str(azure_device.label).lower()
+            if fstype in ['vfat', 'ntfs'] and label == 'bek volume':
                 try:
                     self.disk_util.make_sure_path_exists(self.bek_filesystem_mount_point)
                     self.disk_util.mount_filesystem(os.path.join('/dev/', azure_device.name),

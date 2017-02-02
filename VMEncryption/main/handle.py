@@ -259,6 +259,7 @@ def update_encryption_settings():
                                                                    KeyEncryptionAlgorithm=extension_parameter.KeyEncryptionAlgorithm,
                                                                    AADClientSecret=extension_parameter.AADClientSecret,
                                                                    DiskEncryptionKeyFileName=extension_parameter.DiskEncryptionKeyFileName)
+            bek_util.store_bek_passphrase(encryption_config, extension_parameter.passphrase)
 
             if kek_secret_id_created is None:
                 hutil.do_exit(exit_code=0,
@@ -666,6 +667,7 @@ def enable_encryption():
                                                                            KeyEncryptionAlgorithm=extension_parameter.KeyEncryptionAlgorithm,
                                                                            AADClientSecret=extension_parameter.AADClientSecret,
                                                                            DiskEncryptionKeyFileName=extension_parameter.DiskEncryptionKeyFileName)
+                    bek_util.store_bek_passphrase(encryption_config, extension_parameter.passphrase)
 
                     if kek_secret_id_created is None:
                         encryption_config.clear_config()
