@@ -259,7 +259,6 @@ def update_encryption_settings():
                                                                    KeyEncryptionAlgorithm=extension_parameter.KeyEncryptionAlgorithm,
                                                                    AADClientSecret=extension_parameter.AADClientSecret,
                                                                    DiskEncryptionKeyFileName=extension_parameter.DiskEncryptionKeyFileName)
-            bek_util.store_bek_passphrase(encryption_config, extension_parameter.passphrase)
 
             if kek_secret_id_created is None:
                 hutil.do_exit(exit_code=0,
@@ -275,6 +274,8 @@ def update_encryption_settings():
 
                 shutil.copy(existing_passphrase_file, encryption_environment.bek_backup_path)
                 logger.log("Backed up BEK at {0}".format(encryption_environment.bek_backup_path))
+
+                bek_util.store_bek_passphrase(encryption_config, extension_parameter.passphrase)
 
                 hutil.do_exit(exit_code=0,
                               operation='UpdateEncryptionSettings',
