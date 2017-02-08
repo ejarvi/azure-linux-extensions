@@ -41,6 +41,7 @@ class EncryptionEnvironment(object):
         self.copy_slice_item_backup_file = os.path.join(self.encryption_config_path, 'copy_slice_item.bak')
         self.os_encryption_markers_path = os.path.join(self.encryption_config_path, 'os_encryption_markers')
         self.bek_backup_path = os.path.join(self.encryption_config_path, 'bek_backup')
+        self.default_bek_filename = "LinuxPassPhraseFileName"
 
     def get_se_linux(self):
         proc = Popen([self.patching.getenforce_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)

@@ -72,7 +72,7 @@ class ExtensionParameter(object):
 
         self.passphrase = protected_settings.get(CommonVariables.PassphraseKey)
 
-        self.DiskEncryptionKeyFileName = "LinuxPassPhraseFileName"
+        self.DiskEncryptionKeyFileName = encryption_environment.default_bek_filename
         # parse the query from the array
 
         self.params_config = ConfigUtil(encryption_environment.extension_parameter_file_path,
