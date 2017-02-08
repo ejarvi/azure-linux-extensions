@@ -67,6 +67,8 @@ class BekUtil(object):
                 except Exception as e:
                     message = "Failed to store BEK in {0} with error: {1}".format(azure_device, e)
                     self.logger.log(message)
+                else:
+                    self.logger.log("Stored BEK in {0}".format(azure_device))
 
         return None
 
