@@ -64,7 +64,7 @@ class BekUtil(object):
                                                     self.bek_filesystem_mount_point,
                                                     fstype)
 
-                    with open(os.path.join(self.bek_filesystem_mount_point, bek_filename)) as f:
+                    with open(os.path.join(self.bek_filesystem_mount_point, bek_filename), "w") as f:
                         f.write(passphrase)
                 except Exception as e:
                     message = "Failed to store BEK in {0} with error: {1}".format(azure_device, e)
