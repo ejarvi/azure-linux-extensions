@@ -69,8 +69,9 @@ class BekUtil(object):
                     self.logger.log(message)
                 else:
                     self.logger.log("Stored BEK in {0}".format(azure_device))
+                    return
 
-        return None
+        raise Exception("Did not find BEK volume to store passphrase in")
 
     def get_bek_passphrase_file(self, encryption_config):
         bek_filename = encryption_config.get_bek_filename()
