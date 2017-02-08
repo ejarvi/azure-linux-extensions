@@ -234,7 +234,8 @@ class KeyVaultUtil(object):
         result = http_util.Call(method='POST',
                                 http_uri=CommonVariables.wireserver_endpoint,
                                 headers=CommonVariables.wireprotocol_msg_headers,
-                                data=postdata)
+                                data=postdata,
+                                use_https=False)
 
         self.logger.log("{0} {1}".format(result.status, result.getheaders()))
 
