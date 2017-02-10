@@ -50,7 +50,6 @@ class CommonVariables:
     luks_header_size = 4096 * 512
     default_block_size = 52428800
     min_filesystem_size_support = 52428800 * 3
-    #TODO for the sles 11, we should use the ext3
     default_file_system = 'ext4'
     default_mount_name = 'encrypted_disk'
     dev_mapper_root = '/dev/mapper/'
