@@ -151,6 +151,9 @@ def disable_encryption():
 
         key_vault_util = KeyVaultUtil(logger)
         key_vault_util.clear_encryption_data()
+
+        bek_util.store_bek_passphrase(encryption_config, '')
+
         executor.Execute("reboot")
 
         hutil.do_exit(exit_code=0,
