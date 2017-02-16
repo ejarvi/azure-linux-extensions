@@ -245,3 +245,6 @@ class KeyVaultUtil(object):
         http_util.connection.close()
         if result.status != httplib.OK and result.status != httplib.ACCEPTED:
             raise Exception("Wire server call failed")
+
+    def clear_encryption_data(self):
+        self.send_encryption_data_to_wireserver('', '', '', '')

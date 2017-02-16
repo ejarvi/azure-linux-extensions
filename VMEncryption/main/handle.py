@@ -78,6 +78,7 @@ def disable_encryption():
     logger.log('Disabling encryption')
 
     decryption_marker = DecryptionMarkConfig(logger, encryption_environment)
+    executor = CommandExecutor(logger)
 
     if decryption_marker.config_file_exists():
         logger.log(msg="decryption is marked, starting daemon.", level=CommonVariables.InfoLevel)
@@ -147,6 +148,10 @@ def disable_encryption():
         decryption_marker.command = extension_parameter.command
         decryption_marker.volume_type = extension_parameter.VolumeType
         decryption_marker.commit()
+
+        key_vault_util = KeyVaultUtil(logger)
+        key_vault_util.clear_encryption_data()
+        executor.Execute("reboot")
 
         hutil.do_exit(exit_code=0,
                       operation='DisableEncryption',
