@@ -280,6 +280,8 @@ def update_encryption_settings():
                 logger.log("Backed up BEK at {0}".format(encryption_environment.bek_backup_path))
 
                 bek_util.store_bek_passphrase(encryption_config, extension_parameter.passphrase)
+                
+                executor.Execute("reboot")
 
                 hutil.do_exit(exit_code=0,
                               operation='UpdateEncryptionSettings',
