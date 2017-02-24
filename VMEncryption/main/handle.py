@@ -156,12 +156,6 @@ def disable_encryption():
 
         executor.Execute("reboot")
 
-        hutil.do_exit(exit_code=0,
-                      operation='DisableEncryption',
-                      status=CommonVariables.extension_success_status,
-                      code=str(CommonVariables.success),
-                      message='Decryption started')
-
     except Exception as e:
         message = logger.log(msg="Failed to disable the extension with error: {0}, stack trace: {1}".format(e, traceback.format_exc()), level=CommonVariables.ErrorLevel)
 
@@ -285,12 +279,6 @@ def update_encryption_settings():
                 bek_util.store_bek_passphrase(encryption_config, extension_parameter.passphrase)
                 
                 executor.Execute("reboot")
-
-                hutil.do_exit(exit_code=0,
-                              operation='UpdateEncryptionSettings',
-                              status=CommonVariables.extension_success_status,
-                              code=str(CommonVariables.success),
-                              message=str(kek_secret_id_created))
         else:
             logger.log('Secret has already been updated')
             mount_encrypted_disks(disk_util, bek_util, existing_passphrase_file, encryption_config)
@@ -702,11 +690,6 @@ def enable_encryption():
 
                 if kek_secret_id_created:
                     executor.Execute("reboot")
-                    hutil.do_exit(exit_code=0,
-                                  operation='EnableEncryption',
-                                  status=CommonVariables.extension_success_status,
-                                  code=str(CommonVariables.success),
-                                  message=str(kek_secret_id_created))
                 else:
                     """
                     the enabling called again. the passphrase would be re-used.
