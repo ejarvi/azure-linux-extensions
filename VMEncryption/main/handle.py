@@ -155,14 +155,13 @@ def disable_encryption():
                       message='Decryption started')
 
     except Exception as e:
-        logger.log(msg="Failed to disable the extension with error: {0}, stack trace: {1}".format(e, traceback.format_exc()),
-                   level=CommonVariables.ErrorLevel)
+        message = logger.log(msg="Failed to disable the extension with error: {0}, stack trace: {1}".format(e, traceback.format_exc()), level=CommonVariables.ErrorLevel)
 
         hutil.do_exit(exit_code=0,
                       operation='DisableEncryption',
                       status=CommonVariables.extension_error_status,
                       code=str(CommonVariables.unknown_error),
-                      message='Decryption failed.')
+                      message=message)
 
 def update_encryption_settings():
     hutil.do_parse_context('UpdateEncryptionSettings')
@@ -1477,7 +1476,7 @@ def daemon_encrypt():
 
         os_encryption = None
 
-        if ((distro_name == 'redhat' and distro_version == '7.2') and
+        if ((distro_name == 'redhat' and distro_version == '7.3') and
               (disk_util.is_os_disk_lvm() or os.path.exists('/volumes.lvm'))):
             from oscrypto.rhel_72_lvm import RHEL72LVMEncryptionStateMachine
             os_encryption = RHEL72LVMEncryptionStateMachine(hutil=hutil,
@@ -1493,6 +1492,7 @@ def daemon_encrypt():
                                                          encryption_environment=encryption_environment)
         elif ((distro_name == 'redhat' and distro_version == '7.2') or
             (distro_name == 'redhat' and distro_version == '7.3') or
+            (distro_name == 'centos' and distro_version == '7.3.1611') or
             (distro_name == 'centos' and distro_version == '7.2.1511')):
             from oscrypto.rhel_72 import RHEL72EncryptionStateMachine
             os_encryption = RHEL72EncryptionStateMachine(hutil=hutil,
