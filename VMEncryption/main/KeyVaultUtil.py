@@ -247,4 +247,5 @@ class KeyVaultUtil(object):
             raise Exception("Wire server call failed")
 
     def clear_encryption_data(self):
+        # Empty strings for URLs clears encryption data on VHD
         self.send_encryption_data_to_wireserver('', '', '', '')
