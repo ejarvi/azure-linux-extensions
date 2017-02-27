@@ -117,6 +117,12 @@ def disable_encryption():
         extension_parameter = ExtensionParameter(hutil, logger, DistroPatcher, encryption_environment, protected_settings, public_settings)
 
         disk_util = DiskUtil(hutil=hutil, patching=DistroPatcher, logger=logger, encryption_environment=encryption_environment)
+
+        encryption_status = json.loads(disk_util.get_encryption_status())
+
+        if encryption_status["os"] != "NotEncrypted":
+            raise Exception("Disabling encryption is not supported when OS volume is encrypted")
+
         bek_util = BekUtil(disk_util, logger)
         encryption_config = EncryptionConfig(encryption_environment, logger)
         bek_passphrase_file = bek_util.get_bek_passphrase_file(encryption_config)
@@ -157,8 +163,9 @@ def disable_encryption():
         executor.Execute("reboot")
 
     except Exception as e:
-        message = logger.log(msg="Failed to disable the extension with error: {0}, stack trace: {1}".format(e, traceback.format_exc()), level=CommonVariables.ErrorLevel)
+        message = "Failed to disable the extension with error: {0}, stack trace: {1}".format(e, traceback.format_exc())
 
+        logger.log(msg=message, level=CommonVariables.ErrorLevel)
         hutil.do_exit(exit_code=0,
                       operation='DisableEncryption',
                       status=CommonVariables.extension_error_status,
