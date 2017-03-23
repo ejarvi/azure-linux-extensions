@@ -59,6 +59,7 @@ from __builtin__ import int
 def install():
     hutil.do_parse_context('Install')
     hutil.restore_old_configs()
+    hutil.do_status_report(operation='Install', status=CommonVariables.extension_success_status, status_code=str(CommonVariables.success), message='Installing pre-requisites')
     logger.log("Installing pre-requisites")
     DistroPatcher.install_extras()
     hutil.do_exit(0, 'Install', CommonVariables.extension_success_status, str(CommonVariables.success), 'Install Succeeded')
@@ -1279,7 +1280,7 @@ def enable_encryption_all_in_place(passphrase_file, encryption_marker, disk_util
     for device_item in device_items:
         logger.log("device_item == " + str(device_item))
 
-        should_skip = disk_util.should_skip_for_inplace_encryption(device_item)
+        should_skip = disk_util.should_skip_for_inplace_encryption(device_item, encryption_marker.get_volume_type())
         if not should_skip:
             if device_item.name == bek_util.passphrase_device:
                 logger.log("skip for the passphrase disk ".format(device_item))
