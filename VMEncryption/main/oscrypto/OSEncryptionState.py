@@ -140,6 +140,9 @@ class OSEncryptionState(object):
 
         return self.state_executed
 
+    def _reboot(self):
+        self.command_executor.Execute('reboot')
+
     def _get_fs_partition(self, fs):
         result = None
         dev = os.lstat(fs).st_dev
