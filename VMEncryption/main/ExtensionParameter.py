@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 #
-# VMEncryption extension
+# Azure Disk Encryption For Linux extension
 #
-# Copyright 2015 Microsoft Corporation
+# Copyright 2016 Microsoft Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,6 +48,8 @@ class ExtensionParameter(object):
         self.command = public_settings.get(CommonVariables.EncryptionEncryptionOperationKey)
         self.KeyEncryptionKeyURL = public_settings.get(CommonVariables.KeyEncryptionKeyURLKey)
         self.KeyVaultURL = public_settings.get(CommonVariables.KeyVaultURLKey)
+        self.KeyVaultResourceId = public_settings.get(CommonVariables.KeyVaultResourceIdKey)
+        self.KekVaultResourceId = public_settings.get(CommonVariables.KekVaultResourceIdKey)
         self.AADClientID = public_settings.get(CommonVariables.AADClientIDKey)
         self.AADClientCertThumbprint = public_settings.get(CommonVariables.AADClientCertThumbprintKey)
 
@@ -70,7 +72,7 @@ class ExtensionParameter(object):
 
         self.passphrase = protected_settings.get(CommonVariables.PassphraseKey)
 
-        self.DiskEncryptionKeyFileName = "LinuxPassPhraseFileName"
+        self.DiskEncryptionKeyFileName = encryption_environment.default_bek_filename
         # parse the query from the array
 
         self.params_config = ConfigUtil(encryption_environment.extension_parameter_file_path,
@@ -88,6 +90,12 @@ class ExtensionParameter(object):
 
     def get_keyvault_url(self):
         return self.params_config.get_config(CommonVariables.KeyVaultURLKey)
+
+    def get_keyvault_resource_id(self):
+        return self.params_config.get_config(CommonVariables.KeyVaultResourceIdKey)
+
+    def get_kek_vault_resource_id(self):
+        return self.params_config.get_config(CommonVariables.KekVaultResourceIdKey)
 
     def get_aad_client_id(self):
         return self.params_config.get_config(CommonVariables.AADClientIDKey)
@@ -118,6 +126,12 @@ class ExtensionParameter(object):
 
         KeyEncryptionKeyURL = ConfigKeyValuePair(CommonVariables.KeyEncryptionKeyURLKey, self.KeyEncryptionKeyURL)
         key_value_pairs.append(KeyEncryptionKeyURL)
+
+        KeyVaultResourceId = ConfigKeyValuePair(CommonVariables.KeyVaultResourceIdKey, self.KeyVaultResourceId)
+        key_value_pairs.append(KeyVaultResourceId)
+
+        KekVaultResourceId = ConfigKeyValuePair(CommonVariables.KekVaultResourceIdKey, self.KekVaultResourceId)
+        key_value_pairs.append(KekVaultResourceId)
 
         KeyVaultURL = ConfigKeyValuePair(CommonVariables.KeyVaultURLKey, self.KeyVaultURL)
         key_value_pairs.append(KeyVaultURL)
@@ -170,6 +184,16 @@ class ExtensionParameter(object):
         if (self.KeyVaultURL or self.get_keyvault_url()) and \
            (self.KeyVaultURL != self.get_keyvault_url()):
             self.logger.log('Current config KeyVaultURL {0} differs from effective config KeyVaultURL {1}'.format(self.KeyVaultURL, self.get_keyvault_url()))
+            return True
+
+        if (self.KeyVaultResourceId or self.get_keyvault_resource_id()) and \
+           (self.KeyVaultResourceId != self.get_keyvault_resource_id()):
+            self.logger.log('Current config KeyVaultResourceId {0} differs from effective config KeyVaultResourceId {1}'.format(self.KeyVaultResourceId, self.get_keyvault_resource_id()))
+            return True
+
+        if (self.KekVaultResourceId or self.get_kek_vault_resource_id()) and \
+           (self.KekVaultResourceId != self.get_kek_vault_resource_id()):
+            self.logger.log('Current config KekVaultResourceId {0} differs from effective config KekVaultResourceId {1}'.format(self.KekVaultResourceId, self.get_keyvault_url()))
             return True
 
         if (self.AADClientID or self.get_aad_client_id()) and \

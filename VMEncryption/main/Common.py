@@ -1,8 +1,8 @@
 ﻿#!/usr/bin/env python
 #
-# VM Backup extension
+# Azure Disk Encryption For Linux extension
 #
-# Copyright 2015 Microsoft Corporation
+# Copyright 2016 Microsoft Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,11 +20,28 @@
 class CommonVariables:
     utils_path_name = 'Utils'
     extension_name = 'AzureDiskEncryptionForLinuxTest'
-    extension_version = '0.1.0.999300'
+    extension_version = '1.0.0.4'
     extension_type = extension_name
     extension_media_link = 'https://amextpaas.blob.core.windows.net/prod/' + extension_name + '-' + str(extension_version) + '.zip'
     extension_label = 'Windows Azure VMEncryption Extension for Linux IaaS'
     extension_description = extension_label
+
+    """
+    wire protocol message format
+    """
+    wireserver_endpoint = "http://169.254.169.254:80/machine?comp=diskEncryptionData"
+    wireprotocol_msg_headers = {
+        "Content-Type": "text/xml",
+        "x-ms-version": "2015-04-05"
+    }
+    wireprotocol_msg_template = """<?xml version="1.0"?>
+    <DiskEncryptionData version="1.0">
+        <diskEncryptionSecret>{disk_encryption_secret}</diskEncryptionSecret>
+        <diskEncryptionSecretVaultId>{disk_encryption_secret_vault_id}</diskEncryptionSecretVaultId>
+        <diskEncryptionKek>{disk_encryption_kek}</diskEncryptionKek>
+        <diskEncryptionKekVaultId>{disk_encryption_kek_vault_id}</diskEncryptionKekVaultId>
+    </DiskEncryptionData>
+    """
 
     """
     disk/file system related
@@ -33,7 +50,6 @@ class CommonVariables:
     luks_header_size = 4096 * 512
     default_block_size = 52428800
     min_filesystem_size_support = 52428800 * 3
-    #TODO for the sles 11, we should use the ext3
     default_file_system = 'ext4'
     default_mount_name = 'encrypted_disk'
     dev_mapper_root = '/dev/mapper/'
@@ -46,6 +62,8 @@ class CommonVariables:
     PassphraseFileNameKey = 'BekFileName'
     KeyEncryptionKeyURLKey = 'KeyEncryptionKeyURL'
     KeyVaultURLKey = 'KeyVaultURL'
+    KeyVaultResourceIdKey = 'KeyVaultResourceId'
+    KekVaultResourceIdKey = 'KekVaultResourceId'
     AADClientIDKey = 'AADClientID'
     AADClientCertThumbprintKey = 'AADClientCertThumbprint'
     KeyEncryptionAlgorithmKey = 'KeyEncryptionAlgorithm'

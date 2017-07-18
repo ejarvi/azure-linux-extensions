@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 #
-# VM Backup extension
+# Azure Disk Encryption For Linux extension
 #
-# Copyright 2015 Microsoft Corporation
+# Copyright 2016 Microsoft Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ class KeyVaultUtil(object):
     The Passphrase is a plain encoded string. before the encryption it would be base64encoding.
     return the secret uri if creation successfully.
     """
-    def create_kek_secret(self, Passphrase, KeyVaultURL, KeyEncryptionKeyURL, AADClientID, AADClientCertThumbprint, KeyEncryptionAlgorithm, AADClientSecret, DiskEncryptionKeyFileName):
+    def create_kek_secret(self, Passphrase, KeyVaultURL, KeyVaultResourceId, KeyEncryptionKeyURL, KekVaultResourceId, AADClientID, AADClientCertThumbprint, KeyEncryptionAlgorithm, AADClientSecret, DiskEncryptionKeyFileName):
         try:
             self.logger.log("start creating kek secret")
             passphrase_encoded = base64.standard_b64encode(Passphrase)
@@ -88,6 +88,11 @@ class KeyVaultUtil(object):
                 return None
 
             secret_id = self.create_secret(access_token, KeyVaultURL, secret_value, KeyEncryptionAlgorithm, DiskEncryptionKeyFileName)
+
+            self.send_encryption_data_to_wireserver(disk_encryption_secret=secret_id,
+                                                    disk_encryption_secret_vault_id=KeyVaultResourceId,
+                                                    disk_encryption_kek=KeyEncryptionKeyURL,
+                                                    disk_encryption_kek_vault_id=KekVaultResourceId)
 
             return secret_id
         except Exception as e:
@@ -218,3 +223,29 @@ class KeyVaultUtil(object):
         except Exception as e:
             self.logger.log("Failed to get_authorize_uri with error: {0}, stack trace: {1}".format(e, traceback.format_exc()))
             return None
+
+    def send_encryption_data_to_wireserver(self, disk_encryption_secret, disk_encryption_secret_vault_id, disk_encryption_kek, disk_encryption_kek_vault_id):
+        postdata = CommonVariables.wireprotocol_msg_template.format(disk_encryption_secret=disk_encryption_secret,
+                                                                    disk_encryption_secret_vault_id=disk_encryption_secret_vault_id,
+                                                                    disk_encryption_kek=disk_encryption_kek,
+                                                                    disk_encryption_kek_vault_id=disk_encryption_kek_vault_id)
+
+        http_util = HttpUtil(self.logger)
+        result = http_util.Call(method='POST',
+                                http_uri=CommonVariables.wireserver_endpoint,
+                                headers=CommonVariables.wireprotocol_msg_headers,
+                                data=postdata,
+                                use_https=False)
+
+        self.logger.log("{0} {1}".format(result.status, result.getheaders()))
+
+        result_content = result.read()
+        self.logger.log("result_content is {0}".format(result_content))
+
+        http_util.connection.close()
+        if result.status != httplib.OK and result.status != httplib.ACCEPTED:
+            raise Exception("Wire server call failed")
+
+    def clear_encryption_data(self):
+        # Empty strings for URLs clears encryption data on VHD
+        self.send_encryption_data_to_wireserver('', '', '', '')

@@ -1,8 +1,8 @@
 ﻿#!/usr/bin/env python
 #
-# VMEncryption extension
+# Azure Disk Encryption For Linux extension
 #
-# Copyright 2015 Microsoft Corporation
+# Copyright 2016 Microsoft Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -79,6 +79,7 @@ def disable_encryption():
     logger.log('Disabling encryption')
 
     decryption_marker = DecryptionMarkConfig(logger, encryption_environment)
+    executor = CommandExecutor(logger)
 
     if decryption_marker.config_file_exists():
         logger.log(msg="decryption is marked, starting daemon.", level=CommonVariables.InfoLevel)
@@ -155,11 +156,12 @@ def disable_encryption():
         decryption_marker.volume_type = extension_parameter.VolumeType
         decryption_marker.commit()
 
-        hutil.do_exit(exit_code=0,
-                      operation='DisableEncryption',
-                      status=CommonVariables.extension_success_status,
-                      code=str(CommonVariables.success),
-                      message='Decryption started')
+        key_vault_util = KeyVaultUtil(logger)
+        key_vault_util.clear_encryption_data()
+
+        bek_util.store_bek_passphrase(encryption_config, '')
+
+        executor.Execute("reboot")
 
     except Exception as e:
         message = "Failed to disable the extension with error: {0}, stack trace: {1}".format(e, traceback.format_exc())
@@ -258,7 +260,9 @@ def update_encryption_settings():
 
             kek_secret_id_created = keyVaultUtil.create_kek_secret(Passphrase=extension_parameter.passphrase,
                                                                    KeyVaultURL=extension_parameter.KeyVaultURL,
+                                                                   KeyVaultResourceId=extension_parameter.KeyVaultResourceId,
                                                                    KeyEncryptionKeyURL=extension_parameter.KeyEncryptionKeyURL,
+                                                                   KekVaultResourceId=extension_parameter.KekVaultResourceId,
                                                                    AADClientID=extension_parameter.AADClientID,
                                                                    AADClientCertThumbprint=extension_parameter.AADClientCertThumbprint,
                                                                    KeyEncryptionAlgorithm=extension_parameter.KeyEncryptionAlgorithm,
@@ -280,11 +284,9 @@ def update_encryption_settings():
                 shutil.copy(existing_passphrase_file, encryption_environment.bek_backup_path)
                 logger.log("Backed up BEK at {0}".format(encryption_environment.bek_backup_path))
 
-                hutil.do_exit(exit_code=0,
-                              operation='UpdateEncryptionSettings',
-                              status=CommonVariables.extension_success_status,
-                              code=str(CommonVariables.success),
-                              message=str(kek_secret_id_created))
+                bek_util.store_bek_passphrase(encryption_config, extension_parameter.passphrase)
+                
+                executor.Execute("reboot")
         else:
             logger.log('Secret has already been updated')
             mount_encrypted_disks(disk_util, bek_util, existing_passphrase_file, encryption_config)
@@ -539,6 +541,7 @@ def enable_encryption():
     """
     disk_util = DiskUtil(hutil=hutil, patching=DistroPatcher, logger=logger, encryption_environment=encryption_environment)
     bek_util = BekUtil(disk_util, logger)
+    executor = CommandExecutor(logger)
     
     existing_passphrase_file = None
     encryption_config = EncryptionConfig(encryption_environment=encryption_environment, logger=logger)
@@ -663,12 +666,15 @@ def enable_encryption():
 
                     kek_secret_id_created = keyVaultUtil.create_kek_secret(Passphrase=extension_parameter.passphrase,
                                                                            KeyVaultURL=extension_parameter.KeyVaultURL,
+                                                                           KeyVaultResourceId=extension_parameter.KeyVaultResourceId,
                                                                            KeyEncryptionKeyURL=extension_parameter.KeyEncryptionKeyURL,
+                                                                           KekVaultResourceId=extension_parameter.KekVaultResourceId,
                                                                            AADClientID=extension_parameter.AADClientID,
                                                                            AADClientCertThumbprint=extension_parameter.AADClientCertThumbprint,
                                                                            KeyEncryptionAlgorithm=extension_parameter.KeyEncryptionAlgorithm,
                                                                            AADClientSecret=extension_parameter.AADClientSecret,
                                                                            DiskEncryptionKeyFileName=extension_parameter.DiskEncryptionKeyFileName)
+                    bek_util.store_bek_passphrase(encryption_config, extension_parameter.passphrase)
 
                     if kek_secret_id_created is None:
                         encryption_config.clear_config()
@@ -691,11 +697,7 @@ def enable_encryption():
                                                     disk_format_query=extension_parameter.DiskFormatQuery)
 
                 if kek_secret_id_created:
-                    hutil.do_exit(exit_code=0,
-                                  operation='EnableEncryption',
-                                  status=CommonVariables.extension_success_status,
-                                  code=str(CommonVariables.success),
-                                  message=str(kek_secret_id_created))
+                    executor.Execute("reboot")
                 else:
                     """
                     the enabling called again. the passphrase would be re-used.
