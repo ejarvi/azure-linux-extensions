@@ -343,7 +343,7 @@ def update_encryption_settings():
                       message=message)
 
 def update():
-    hutil.do_parse_context('Upadate')
+    hutil.do_parse_context('Update')
     hutil.do_exit(0, 'Update', CommonVariables.extension_success_status, '0', 'Update Succeeded')
 
 def exit_without_status_report():
