@@ -197,10 +197,11 @@ def stamp_disks_with_settings(new_device_items_about_to_get_encrypted, os_item_t
 
     # exit transitioning state by issuing a status report indicating
     # that the necessary encryption settings are stamped successfully
-    hutil.do_status_report(operation=CommonVariables.EnableEncryption,
+    hutil.set_stamped_flag()
+    hutil.do_status_report(operation='StampDiskSettings',
                            status=CommonVariables.extension_success_status,
                            status_code=str(CommonVariables.success),
-                           message='Encryption settings stamped successfully')
+                           message='Encryption settings stamped')
 
     settings.remove_protector_file(new_protector_name)
 
@@ -1581,7 +1582,7 @@ def daemon_encrypt():
                           code=CommonVariables.encryption_failed,
                           message=message)
 
-        if not hutil.is_stamped():
+        if not hutil.is_stamped() and is_not_in_stripped_os:
             # if encryption settings not yet stamped, prepare os item
             device_items = disk_util.get_device_items(None)
             for device_item in device_items:
@@ -1612,14 +1613,15 @@ def daemon_encrypt():
                                    status=CommonVariables.extension_success_status,
                                    status_code=str(CommonVariables.success),
                                    message='Encryption succeeded for data volumes')
-    
+
     if (volume_type == CommonVariables.VolumeTypeOS.lower() or volume_type == CommonVariables.VolumeTypeAll.lower()) and \
         is_not_in_stripped_os:
-        # stamp here if not already stamped (only OS disk is being encrypted)
-        if not hutil.is_stamped():
-            stamp_disks_with_settings([], os_item_to_stamp, encryption_config)
 
         try:
+            # stamp os encryption settings if not already done with data volumes
+            if os_encryption.state == 'uninitialized' and not hutil.is_stamped():
+                stamp_disks_with_settings([], os_item_to_stamp, encryption_config)
+
             os_encryption.start_encryption()
 
             if not os_encryption.state == 'completed':
