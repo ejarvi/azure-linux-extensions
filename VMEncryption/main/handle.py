@@ -198,7 +198,7 @@ def stamp_disks_with_settings(new_device_items_about_to_get_encrypted, os_item_t
     # exit transitioning state by issuing a status report indicating
     # that the necessary encryption settings are stamped successfully
     hutil.set_stamped_flag()
-    hutil.do_status_report(operation='StampDiskSettings',
+    hutil.do_status_report(operation=CommonVariables.EnableEncryption,
                            status=CommonVariables.extension_success_status,
                            status_code=str(CommonVariables.success),
                            message='Encryption settings stamped')
@@ -306,7 +306,6 @@ def update_encryption_settings():
             # store new passphrase and overwrite old encryption key file
             bek_util.store_bek_passphrase(encryption_config, extension_parameter.passphrase)
 
-            # TODO -- review this code to make sure all prior devices do get the new encryption settings
             stamp_disks_with_settings(new_device_items_about_to_get_encrypted=[], os_item_to_stamp=[], encryption_config=encryption_config)
 
             # commit local encryption config
