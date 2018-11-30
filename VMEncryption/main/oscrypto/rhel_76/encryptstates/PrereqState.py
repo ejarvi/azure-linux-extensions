@@ -46,17 +46,11 @@ class PrereqState(OSEncryptionState):
         distro_info = self.context.distro_patcher.distro_info
         self.context.logger.log("Distro info: {0}".format(distro_info))
 
-        if ((distro_info[0] == 'redhat' and distro_info[1] == '7.2') or
-            (distro_info[0] == 'redhat' and distro_info[1] == '7.3') or
-            (distro_info[0] == 'redhat' and distro_info[1] == '7.4') or
-            (distro_info[0] == 'redhat' and distro_info[1] == '7.5') or
-            (distro_info[0] == 'centos' and distro_info[1].startswith('7.4')) or
-            (distro_info[0] == 'centos' and distro_info[1] == '7.3.1611') or
-            (distro_info[0] == 'centos' and distro_info[1] == '7.2.1511')):
+        if (distro_info[0] == 'redhat' and distro_info[1] == '7.6'):
             self.context.logger.log("Enabling OS volume encryption on {0} {1}".format(distro_info[0],
                                                                                       distro_info[1]))
         else:
-            raise Exception("RHEL72EncryptionStateMachine called for distro {0} {1}".format(distro_info[0],
+            raise Exception("RHEL76EncryptionStateMachine called for distro {0} {1}".format(distro_info[0],
                                                                                             distro_info[1]))
 
         self.context.distro_patcher.install_extras()

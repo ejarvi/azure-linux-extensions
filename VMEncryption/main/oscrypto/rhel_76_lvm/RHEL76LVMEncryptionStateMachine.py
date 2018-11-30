@@ -111,14 +111,14 @@ class RHEL76LVMEncryptionStateMachine(OSEncryptionStateMachine):
     ]
 
     def on_enter_state(self):
-        super(RHEL72LVMEncryptionStateMachine, self).on_enter_state()
+        super(RHEL76LVMEncryptionStateMachine, self).on_enter_state()
 
     def should_exit_previous_state(self):
         # when this is called, self.state is still the "source" state in the transition
-        return super(RHEL72LVMEncryptionStateMachine, self).should_exit_previous_state()
+        return super(RHEL76LVMEncryptionStateMachine, self).should_exit_previous_state()
 
     def __init__(self, hutil, distro_patcher, logger, encryption_environment):
-        super(RHEL72LVMEncryptionStateMachine, self).__init__(hutil, distro_patcher, logger, encryption_environment)
+        super(RHEL76LVMEncryptionStateMachine, self).__init__(hutil, distro_patcher, logger, encryption_environment)
 
         self.state_objs = {
             'prereq': PrereqState(self.context),
@@ -130,8 +130,8 @@ class RHEL76LVMEncryptionStateMachine(OSEncryptionStateMachine):
         }
 
         self.state_machine = Machine(model=self,
-                                     states=RHEL72LVMEncryptionStateMachine.states,
-                                     transitions=RHEL72LVMEncryptionStateMachine.transitions,
+                                     states=RHEL76LVMEncryptionStateMachine.states,
+                                     transitions=RHEL76LVMEncryptionStateMachine.transitions,
                                      initial='uninitialized')
 
     def start_encryption(self):
