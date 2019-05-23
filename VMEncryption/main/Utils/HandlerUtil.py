@@ -127,7 +127,11 @@ class HandlerUtility:
         settings_files = [os.path.basename(f) for f in settings_files]
         seq_nums = [int(re.findall(r'(\d+)\.settings', f)[0]) for f in settings_files]
 
-        return max(seq_nums)
+        if seq_nums:
+            return max(seq_nums)
+        else: 
+            self.log("no settings files found, unable to derive latest sequence number")
+            return -1        
 
     def get_current_seq(self):
         return int(self._context._seq_no)
@@ -316,14 +320,18 @@ class HandlerUtility:
         waagent.SetFileContents('mrseq', str(seq))
 
     def redo_last_status(self):
-        latest_seq = str(self.get_latest_seq())
-        self._context._status_file = os.path.join(self._context._status_dir, latest_seq + '.status')
+        latest_sequence_num = self.get_latest_seq()
+        if (latest_sequence_num > 0):
+            latest_seq = str(latest_sequence_num)
+            self._context._status_file = os.path.join(self._context._status_dir, latest_seq + '.status')
 
-        previous_seq = str(self.get_latest_seq() - 1)
-        previous_status_file = os.path.join(self._context._status_dir, previous_seq + '.status')
+            previous_seq = str(latest_seq_num - 1)
+            previous_status_file = os.path.join(self._context._status_dir, previous_seq + '.status')
 
-        shutil.copy2(previous_status_file, self._context._status_file)
-        self.log("[StatusReport ({0})] Copied {1} to {2}".format(latest_seq, previous_status_file, self._context._status_file))
+            shutil.copy2(previous_status_file, self._context._status_file)
+            self.log("[StatusReport ({0})] Copied {1} to {2}".format(latest_seq, previous_status_file, self._context._status_file))
+        else: 
+            self.log("no status to redo, latest settings file sequence number in config folder must be greater than 0")
 
     def redo_current_status(self):
         stat_rept = waagent.GetFileContents(self._context._status_file)
@@ -335,7 +343,13 @@ class HandlerUtility:
                               stat[0]["status"]["formattedMessage"]["message"])
 
     def do_status_report(self, operation, status, status_code, message):
-        latest_seq = str(self.get_latest_seq())
+        latest_seq_num = self.get_latest_seq()
+        if (latest_seq_num >= 0): 
+            latest_seq = str(self.get_latest_seq())
+        else:
+            self.log("sequence number could not be derived from settings files, using 0.status")
+            latest_seq = "0"
+
         self._context._status_file = os.path.join(self._context._status_dir, latest_seq + '.status')
 
         if message is None:
