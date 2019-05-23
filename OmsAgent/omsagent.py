@@ -45,7 +45,7 @@ except Exception as e:
 
 # Global Variables
 PackagesDirectory = 'packages'
-BundleFileName = 'omsagent-1.9.0-0.universal.x64.sh'
+BundleFileName = 'omsagent-1.11.0-4.universal.x64.sh'
 GUIDRegex = r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
 GUIDOnlyRegex = r'^' + GUIDRegex + '$'
 SCOMCertIssuerRegex = r'^[\s]*Issuer:[\s]*CN=SCX-Certificate/title=SCX' + GUIDRegex + ', DC=.*$'
@@ -81,7 +81,7 @@ EnableErrorOMSReturned403 = 5
 EnableErrorOMSReturnedNon200 = 6
 EnableErrorResolvingHost = 7
 EnableErrorOnboarding = 8
-EnableCalledBeforeSuccessfulInstall = 9
+EnableCalledBeforeSuccessfulInstall = 52 # since install is a missing dependency
 UnsupportedOpenSSL = 55 #60, temporary as it excludes from SLA
 # OneClick error codes
 OneClickErrorCode = 40
@@ -164,7 +164,7 @@ def main():
     try:
         global HUtilObject
         HUtilObject = parse_context(operation)
-        exit_code = operations[operation]()
+        exit_code, output = operations[operation]()
 
         # Exit code 1 indicates a general problem that doesn't have a more
         # specific error code; it often indicates a missing dependency
@@ -178,8 +178,8 @@ def main():
                       'package manager on the VM is currently locked: ' \
                       'please wait and try again'.format(DPKGLockedErrorCode)
         elif exit_code is not 0:
-            message = '{0} failed with exit code {1}'.format(operation,
-                                                             exit_code)
+            message = '{0} failed with exit code {1} {2}'.format(operation,
+                                                             exit_code, output)
 
     except OmsAgentForLinuxException as e:
         exit_code = e.error_code
@@ -236,6 +236,8 @@ def telemetry():
 
     watcher_thread.join()
     self_mon_thread.join()
+ 
+    return 0, ""   
 
 def prepare_update():
     """
@@ -252,7 +254,7 @@ def prepare_update():
     if (not os.path.isdir(etc_move_path)):
         shutil.move(etc_remove_path, etc_move_path)
 
-    return 0
+    return 0, ""
 
 def restore_state(workspaceId):
     """
@@ -301,11 +303,11 @@ def install():
     hutil_log_info('Running command "{0}"'.format(cmd))
 
     # Retry, since install can fail due to concurrent package operations
-    exit_code = run_command_with_retries(cmd, retries = 15,
+    exit_code, output = run_command_with_retries_output(cmd, retries = 15,
                                          retry_check = retry_if_dpkg_locked_or_curl_is_not_found,
                                          final_check = final_check_if_dpkg_locked)
     
-    return exit_code
+    return exit_code, output
 
 def uninstall():
     """
@@ -322,7 +324,7 @@ def uninstall():
     hutil_log_info('Running command "{0}"'.format(cmd))
 
     # Retry, since uninstall can fail due to concurrent package operations
-    exit_code = run_command_with_retries(cmd, retries = 5,
+    exit_code, output = run_command_with_retries_output(cmd, retries = 5,
                                          retry_check = retry_if_dpkg_locked_or_curl_is_not_found,
                                          final_check = final_check_if_dpkg_locked)
     if IsUpgrade:
@@ -330,7 +332,7 @@ def uninstall():
     else:
         remove_workspace_configuration()
 
-    return exit_code
+    return exit_code, output
 
 
 def enable():
@@ -411,7 +413,7 @@ def enable():
                                                           optionalParams)
 
     hutil_log_info('Handler initiating onboarding.')
-    exit_code = run_command_with_retries(onboard_cmd, retries = 5,
+    exit_code, output = run_command_with_retries_output(onboard_cmd, retries = 5,
                                          retry_check = retry_onboarding,
                                          final_check = raise_if_no_internet,
                                          check_error = True, log_cmd = False)
@@ -425,7 +427,7 @@ def enable():
         os.chown(etc_final_path, uid, gid)
 
         # octal numbers are represented differently in python 3
-        if sys.version_info.major > 2:
+        if sys.version_info >= (3,):
             os.chmod(etc_final_path, 0o750)
         else:    
             os.chmod(etc_final_path, 0750)
@@ -433,13 +435,13 @@ def enable():
         for root, dirs, files in os.walk(etc_final_path):
             for d in dirs:
                 os.chown(os.path.join(root, d), uid, gid)
-                if sys.version_info.major > 2:
+                if sys.version_info >= (3,):
                     os.chmod(os.path.join(root, d), 0o750)
                 else:    
                     os.chmod(os.path.join(root, d), 0750)                
             for f in files:
                 os.chown(os.path.join(root, f), uid, gid)                  
-                if sys.version_info.major > 2:
+                if sys.version_info >= (3,):
                     os.chmod(os.path.join(root, f), 0o640)
                 else:    
                     os.chmod(os.path.join(root, f), 0640)                           
@@ -470,7 +472,7 @@ def enable():
         #start telemetry process if enable is successful
         start_telemetry_process()
 
-    return exit_code
+    return exit_code, output
 
 def remove_workspace_configuration():
     """
@@ -562,7 +564,7 @@ def disable():
         return 1
 
     exit_code, output = run_command_and_log(DisableOMSAgentServiceCommand)
-    return exit_code
+    return exit_code, output
 
 
 # Dictionary of operations strings to methods
@@ -941,6 +943,16 @@ def run_command_and_log(cmd, check_error = True, log_cmd = True):
         hutil_log_info('Output of command "{0}": \n{1}'.format(cmd, output))
     else:
         hutil_log_info('Output: \n{0}'.format(output))
+
+    # also write output to STDOUT since WA agent uploads that to Azlinux Kusto DB
+    try:
+        if sys.version_info >= (3,):
+            print(output)
+        else:    
+            print output        
+    except:
+        hutil_log_info('Failed to write output to STDOUT')
+
     return exit_code, output
 
 
@@ -981,6 +993,44 @@ def run_command_with_retries(cmd, retries, retry_check, final_check = None,
         exit_code = final_check(exit_code, output)
 
     return exit_code
+
+def run_command_with_retries_output(cmd, retries, retry_check, final_check = None,
+                             check_error = True, log_cmd = True,
+                             initial_sleep_time = InitialRetrySleepSeconds,
+                             sleep_increase_factor = 1):
+    """
+    Caller provides a method, retry_check, to use to determine if a retry
+    should be performed. This must be a function with two parameters:
+    exit_code and output
+    The final_check can be provided as a method to perform a final check after
+    retries have been exhausted
+    Logic used: will retry up to retries times with initial_sleep_time in
+    between tries
+    If the retry_check retuns True for retry_verbosely, we will try cmd with
+    the standard -v verbose flag added
+    """
+    try_count = 0
+    sleep_time = initial_sleep_time
+    run_cmd = cmd
+    run_verbosely = False
+
+    while try_count <= retries:
+        if run_verbosely:
+            run_cmd = cmd + ' -v'
+        exit_code, output = run_command_and_log(run_cmd, check_error, log_cmd)
+        should_retry, retry_message, run_verbosely = retry_check(exit_code,
+                                                                 output)
+        if not should_retry:
+            break
+        try_count += 1
+        hutil_log_info(retry_message)
+        time.sleep(sleep_time)
+        sleep_time *= sleep_increase_factor
+
+    if final_check is not None:
+        exit_code = final_check(exit_code, output)
+
+    return exit_code, output
 
 
 def is_dpkg_locked(exit_code, output):
