@@ -180,7 +180,15 @@ def update_encryption_settings():
     logger.log('Updating encryption settings')
 
     # re-install extra packages like cryptsetup if no longer on system from earlier enable
-    DistroPatcher.install_extras()
+    try:
+        DistroPatcher.install_extras()
+    except Exception as e:
+        message = "Failed to update encryption settings with error: {0}, stack trace: {1}".format(e, traceback.format_exc())
+        hutil.do_exit(exit_code=CommonVariables.missing_dependency,
+                      operation='UpdateEncryptionSettings',
+                      status=CommonVariables.extension_error_status,
+                      code=str(CommonVariables.missing_dependency),
+                      message=message)
 
     encryption_config = EncryptionConfig(encryption_environment, logger)
     config_secret_seq = encryption_config.get_secret_seq_num()
@@ -245,14 +253,15 @@ def update_encryption_settings():
             logger.log("New key successfully added to all encrypted devices")
 
             if DistroPatcher.distro_info[0] == "Ubuntu":
+                logger.log("Updating initrd image with new osluksheader.")
                 executor.Execute("update-initramfs -u -k all", True)
 
             if DistroPatcher.distro_info[0] == "redhat" or DistroPatcher.distro_info[0] == "centos":
                 distro_version = DistroPatcher.distro_info[1]
 
                 if distro_version.startswith('7.'):
+                    logger.log("Updating initrd image with new osluksheader.")
                     executor.ExecuteInBash("/usr/sbin/dracut -f -v --kver `grubby --default-kernel | sed 's|/boot/vmlinuz-||g'`", True)
-                    logger.log("Update initrd image with new osluksheader.")
 
             os.unlink(temp_keyfile.name)
 
@@ -327,6 +336,18 @@ def update_encryption_settings():
                 logger.log("Keyslots after removal: {0}".format(keyslots))
 
             logger.log("Old key successfully removed from all encrypted devices")
+
+            if DistroPatcher.distro_info[0] == "Ubuntu":
+                logger.log("Updating initrd image with new osluksheader.")
+                executor.Execute("update-initramfs -u -k all", True)
+
+            if DistroPatcher.distro_info[0] == "redhat" or DistroPatcher.distro_info[0] == "centos":
+                distro_version = DistroPatcher.distro_info[1]
+
+                if distro_version.startswith('7.'):
+                    logger.log("Updating initrd image with new osluksheader.")
+                    executor.ExecuteInBash("/usr/sbin/dracut -f -v --kver `grubby --default-kernel | sed 's|/boot/vmlinuz-||g'`", True)
+
             hutil.save_seq()
             extension_parameter.commit()
             os.unlink(encryption_environment.bek_backup_path)
@@ -496,10 +517,24 @@ def enable():
         public_settings = get_public_settings()
         logger.log('Public settings:\n{0}'.format(json.dumps(public_settings, sort_keys=True, indent=4)))
         cutil = CheckUtil(logger)
+        # Mount already encrypted disks before running fatal prechecks
+        disk_util = DiskUtil(hutil=hutil, patching=DistroPatcher, logger=logger, encryption_environment=encryption_environment)
+        bek_util = BekUtil(disk_util, logger)
+        existing_passphrase_file = None
+        encryption_config = EncryptionConfig(encryption_environment=encryption_environment, logger=logger)
+
+        existing_passphrase_file = bek_util.get_bek_passphrase_file(encryption_config)
+        if existing_passphrase_file is not None:
+            mount_encrypted_disks(disk_util=disk_util,
+                                  bek_util=bek_util,
+                                  encryption_config=encryption_config,
+                                  passphrase_file=existing_passphrase_file)
+
+        encryption_status = json.loads(disk_util.get_encryption_status())
 
         # run fatal prechecks, report error if exceptions are caught
         try:
-            cutil.precheck_for_fatal_failures(public_settings)
+            cutil.precheck_for_fatal_failures(public_settings, encryption_status, DistroPatcher)
         except Exception as e:
             logger.log("PRECHECK: Fatal Exception thrown during precheck")
             logger.log(traceback.format_exc())
@@ -595,6 +630,7 @@ def enable_encryption():
                        level=CommonVariables.WarningLevel)
             hutil.redo_last_status()
             exit_without_status_report()
+    
 
     ps = subprocess.Popen(["ps", "aux"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     ps_stdout, ps_stderr = ps.communicate()
@@ -1586,7 +1622,8 @@ def daemon_encrypt():
                                                             encryption_environment=encryption_environment)
         elif (((distro_name == 'centos' and distro_version == '7.3.1611') or
               (distro_name == 'centos' and distro_version.startswith('7.4')) or
-              (distro_name == 'centos' and distro_version.startswith('7.5'))) and
+              (distro_name == 'centos' and distro_version.startswith('7.5')) or
+              (distro_name == 'centos' and distro_version.startswith('7.6'))) and
               (disk_util.is_os_disk_lvm() or os.path.exists('/volumes.lvm'))):
             from oscrypto.rhel_72_lvm import RHEL72LVMEncryptionStateMachine
             os_encryption = RHEL72LVMEncryptionStateMachine(hutil=hutil,
@@ -1598,6 +1635,7 @@ def daemon_encrypt():
               (distro_name == 'redhat' and distro_version == '7.4') or
               (distro_name == 'redhat' and distro_version == '7.5') or
               (distro_name == 'redhat' and distro_version == '7.6') or
+              (distro_name == 'centos' and distro_version.startswith('7.6')) or
               (distro_name == 'centos' and distro_version.startswith('7.5')) or
               (distro_name == 'centos' and distro_version.startswith('7.4')) or
               (distro_name == 'centos' and distro_version == '7.3.1611') or
@@ -1619,7 +1657,7 @@ def daemon_encrypt():
                                                            distro_patcher=DistroPatcher,
                                                            logger=logger,
                                                            encryption_environment=encryption_environment)
-        elif distro_name == 'Ubuntu' and distro_version == '16.04':
+        elif distro_name == 'Ubuntu' and distro_version in ['16.04', '18.04']:
             from oscrypto.ubuntu_1604 import Ubuntu1604EncryptionStateMachine
             os_encryption = Ubuntu1604EncryptionStateMachine(hutil=hutil,
                                                              distro_patcher=DistroPatcher,
