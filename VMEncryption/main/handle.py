@@ -51,13 +51,7 @@ from __builtin__ import int
 
 def install():
     hutil.do_parse_context('Install')
-    # The extension update handshake is [old:disable][new:update][old:uninstall][new:install]
-    # Prior extension versions archived their configs in [old:uninstall], not in [old:disable]
-    # Currently, the only reliable place to restore old configs is in [new:install]
-    # Once all running versions archive in [old:disable], restore can be moved to [new:update]
-    hutil.restore_old_configs()
     hutil.do_exit(0, 'Install', CommonVariables.extension_success_status, str(CommonVariables.success), 'Install Succeeded')
-
 
 def disable():
     hutil.do_parse_context('Disable')
@@ -368,19 +362,15 @@ def update_encryption_settings():
 
 
 def update():
+    # The extension update handshake is [old:disable][new:update][old:uninstall][new:install]
     # this method is called when updating an older version of the extension to a newer version
     hutil.do_parse_context('Update')
     logger.log("Installing pre-requisites")
     DistroPatcher.update_prereq()
-    # during update to new extension version, sweep configuration settings files from the prior 
-    # version into the new configuration settings directory that will be used by the new extension
-    hutil.restore_old_configs() 
     hutil.do_exit(0, 'Update', CommonVariables.extension_success_status, '0', 'Update Succeeded')
-
 
 def exit_without_status_report():
     sys.exit(0)
-
 
 def not_support_header_option_distro(patching):
     if patching.distro_info[0].lower() == "centos" and patching.distro_info[1].startswith('6.'):
@@ -849,7 +839,7 @@ def enable_encryption_format(passphrase, disk_format_query, disk_util, force=Fal
                         file_system = CommonVariables.default_file_system
                     format_disk_result = disk_util.format_disk(dev_path=encrypted_device_path, file_system=file_system)
                     if format_disk_result != CommonVariables.process_success:
-                        logger.log(msg=("format disk {0} failed".format(encrypted_device_path, format_disk_result)), level=CommonVariables.ErrorLevel)
+                        logger.log(msg=("format of disk {0} failed with result: {1}".format(encrypted_device_path, format_disk_result)), level=CommonVariables.ErrorLevel)
                     crypt_item_to_update = CryptItem()
                     crypt_item_to_update.mapper_name = mapper_name
                     crypt_item_to_update.dev_path = dev_path_in_query

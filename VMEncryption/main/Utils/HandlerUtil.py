@@ -185,6 +185,15 @@ class HandlerUtility:
             self.error("JSON error processing settings file:" + config_txt)
         else:
             handlerSettings = config['runtimeSettings'][0]['handlerSettings']
+
+            # skip unnecessary decryption of protected settings for query status 
+            # operations, to avoid timeouts in case of multiple settings files
+            if handlerSettings.has_key('publicSettings'):
+                ps = handlerSettings.get('publicSettings')
+                op = ps.get(CommonVariables.EncryptionEncryptionOperationKey)
+                if op == CommonVariables.QueryEncryptionStatus:
+                    return config
+            
             if handlerSettings.has_key('protectedSettings') and \
                     handlerSettings.has_key("protectedSettingsCertThumbprint") and \
                     handlerSettings['protectedSettings'] is not None and \
@@ -206,7 +215,6 @@ class HandlerUtility:
                 except:
                     self.error('JSON exception loading protected settings')
                 handlerSettings['protectedSettings'] = jctxt
-                self.log('Config decoded correctly.')
         return config
 
     def do_parse_context(self, operation):
@@ -223,61 +231,65 @@ class HandlerUtility:
 
         return _context
 
-    def get_last_nonquery_sequence_number(self):  
-        # precondition: _context already set, _seq_no available, at least one settings file in config dir
-        # search through settings files and return the sequence number 
-        # of the last operation that was not a query status operation 
-        # or -1 if a non query operation is not found in any files 
-        self.log("Finding sequence number of last nonquery operation")
-        found = False
-        i = self._get_current_seq_no(self._context._config_dir)
-        while ((i >= 0) and (not found)):
-            self.log("current index:  " + str(i))
-            try:
-                settings_file = os.path.join(self._context._config_dir, str(i) + '.settings')
-                if not os.path.exists(settings_file):
-                    raise FileNotFoundError(settings_file)
-                content = waagent.GetFileContents(settings_file)
-                if not content:
-                    raise ValueError(settings_file)
-                config = self._parse_config(content)
-                if not config:
-                    raise ValueError("unable to parse config: " + settings_file)
-                config_public_settings = config['runtimeSettings'][0]['handlerSettings'].get('publicSettings')
-                if not config_public_settings:
-                    raise ValueError("unable to retrieve public settings: " + settings_file)
-                if isinstance(config_public_settings, basestring):
-                    public_settings = json.loads(config_public_settings)
-                else:
-                    public_settings = config_public_settings
-                if not public_settings:
-                    raise ValueError("unable to load json from public settings: " + settings_file)
-                op = None
-                if CommonVariables.EncryptionEncryptionOperationKey in public_settings:
-                    op = public_settings.get(CommonVariables.EncryptionEncryptionOperationKey)
-                else:
-                    raise ValueError("unable to retrieve operation from public settings: " + settings_file)
-                if op and op != CommonVariables.QueryEncryptionStatus:
-                    found = True
-                    self.log("Found non query operation [" + op + "] at sequence number [" + str(i) + "]")
-                    return i
-            except Exception as e: 
-                self.log(str(e))
-            i -= 1
-        return -1
+    # def get_last_nonquery_sequence_number(self):  
+    #     # precondition: _context already set, _seq_no available, at least one settings file in config dir
+    #     # search through settings files and return the sequence number 
+    #     # of the last operation that was not a query status operation 
+    #     # or -1 if a non query operation is not found in any files 
+    #     found = False
+    #     i = self._get_current_seq_no(self._context._config_dir)
+    #     while ((i >= 0) and (not found)):
+    #         # self.log("current index:  " + str(i))
+    #         try:
+    #             settings_file = os.path.join(self._context._config_dir, str(i) + '.settings')
+
+    #             # Note: In cases of minor version extension upgrades, older settings files 
+    #             # are cleared from the config folder on install of the new version, even though 
+    #             # the guest agent will continue incrementing settings files at the last sequence
+    #             # number version that was used. So in this case, an n.settings file will exist in 
+    #             # the config dir, but the prior [0..(n-1)].settings files will not. 
+
+    #             if os.path.exists(settings_file):
+    #                 content = waagent.GetFileContents(settings_file)
+    #                 if not content:
+    #                     raise ValueError("unable to get contents: " + settings_file)
+    #                 config = self._parse_config(content)
+    #                 if not config:
+    #                     raise ValueError("unable to parse config: " + settings_file)
+    #                 config_public_settings = config['runtimeSettings'][0]['handlerSettings'].get('publicSettings')
+    #                 if not config_public_settings:
+    #                     raise ValueError("unable to retrieve public settings: " + settings_file)
+    #                 if isinstance(config_public_settings, basestring):
+    #                     public_settings = json.loads(config_public_settings)
+    #                 else:
+    #                     public_settings = config_public_settings
+    #                 if not public_settings:
+    #                     raise ValueError("unable to load json from public settings: " + settings_file)
+    #                 op = None
+    #                 if CommonVariables.EncryptionEncryptionOperationKey in public_settings:
+    #                     op = public_settings.get(CommonVariables.EncryptionEncryptionOperationKey)
+    #                 else:
+    #                     raise ValueError("unable to retrieve operation from public settings: " + settings_file)
+    #                 if op and op != CommonVariables.QueryEncryptionStatus:
+    #                     found = True
+    #                     self.log("Non-query operation (" + op + ") found in " + str(i) + ".settings")
+    #                     return i
+    #         except Exception as e: 
+    #             self.log(str(e))
+    #         i -= 1
+    #     return -1
 
     def is_valid_nonquery(self, settings_file_path):
         # TODO - check if we want update and disable in this list?  if not, callers of this function may need to special case or maybe we need something different 
         nonquery_ops = [ CommonVariables.EnableEncryption, CommonVariables.EnableEncryptionFormat, CommonVariables.EnableEncryptionFormatAll, CommonVariables.UpdateEncryptionSettings, CommonVariables.DisableEncryption ] 
 
-        # inspect file path 
         if settings_file_path and os.path.exists(settings_file_path):
             # open file and look for presence of nonquery operation 
             config_txt = waagent.GetFileContents(settings_file_path)
             config_obj = self._parse_config(config_txt)
             public_settings_str = config_obj['runtimeSettings'][0]['handlerSettings'].get('publicSettings')
 
-            # load string as json if not not returned as json already
+            # if not json already, load string as json 
             if isinstance(public_settings_str, basestring):
                 public_settings = json.loads(public_settings_str)
             else:
@@ -287,32 +299,34 @@ class HandlerUtility:
             if operation and (operation in nonquery_ops):
                 return True
 
-        # at this point, the settings file was not recognized as valid, or did not contain a recognized nonquery operation 
+        # invalid input, or not recognized as a valid nonquery operation 
         return False
+
 
     def get_last_nonquery_config_path(self):
         # pre: internal self._context._config_dir and _seq_no, _settings_file are are set prior to call
         # post: returns last nonquery config path from etiher the current config or the archived folder 
         # returns None if there is no nonquery config 
         
-        # validate preconditions 
-        # TODO - these cases are agent errors due to invalid environment if they occur 
-        if self._context._seq_no < 0:
-            raise ValueError("current context sequence number must be initialized and non-negative prior to call") 
-        if not self._context._config_dir:
-            raise ValueError("current context config dir must be initialized prior to call")
-        if not self._context._settings_file or not os.path.exists(self._context._settings_file):
-            raise ValueError("current context settings file variable must be initialized and point to a file that exists")
+        # TODO - validate preconditions and error with telemetry codes if they ever occur 
+        # these would be considered errors in the calling method or the guest agent setup 
+        #
+        # if self._context._seq_no < 0:
+        #     raise ValueError("current context sequence number must be initialized and non-negative prior to call") 
+        # if not self._context._config_dir:
+        #     raise ValueError("current context config dir must be initialized prior to call")
+        # if not self._context._settings_file or not os.path.exists(self._context._settings_file):
+        #     raise ValueError("current context settings file variable must be initialized and point to a file that exists")
 
         # check timestamp of pointer to last archived settings file 
         curr_path = self._context._settings_file
-        last_path = os.path.join(self.config_archive_folder, "last_nonquery")
+        last_path = os.path.join(self.config_archive_folder, "lnq.settings")
         
         # if an archived nonquery settings file exists, use it if it is newer than current settings
         if os.path.exists(last_path) and (os.stat(last_path).st_mtime > os.stat(curr_path).st_mtime):
             return last_path
         else:
-            # reverse iterate through settings files in config dir
+            # reverse iterate through numbered settings files in config dir
             # and return path to the first nonquery settings file found
             for i in range(self._context._seq_no,-1,-1):
                 curr_path = os.path.join(self._context._config_dir, str(i) + '.settings')
@@ -354,7 +368,7 @@ class HandlerUtility:
     def get_handler_env(self):
         # load environment variables from HandlerEnvironment.json 
         # according to spec, it is always in the ./ directory
-        self.log('cwd is ' + os.path.realpath(os.path.curdir))
+        #self.log('cwd is ' + os.path.realpath(os.path.curdir))
         handler_env_file = './HandlerEnvironment.json'
         if not os.path.isfile(handler_env_file):
             self.error("Unable to locate " + handler_env_file)
@@ -378,11 +392,10 @@ class HandlerUtility:
 
     def try_parse_context(self):        
         # precondition: agent is in a properly running state with at least one settings file in config folder
-        #               any archived settings from prior instances of the extension are saved if applicable
+        #               any archived settings from prior instances of the extension were saved to archive folder
         # postcondition: context variables initialized to reflect current handler environment and prior call history 
                 
         # initialize handler environment context variables
-        self.log("initialize handler environment context variables")
         handler_env = self.get_handler_env()
         self._context._name = handler_env['name']
         self._context._version = str(handler_env['version'])
@@ -397,14 +410,16 @@ class HandlerUtility:
         self._context._seq_no = self._get_current_seq_no(self._context._config_dir)
         self._context._settings_file = os.path.join(self._context._config_dir, str(self._context._seq_no) + '.settings')
         
-        # get a config object corresponding to the last settings file (skipping QueryEncryptionStatus settings, if that flag was set) 
-        # note - this can result in a config object that doesn't match the settings file at the current sequence number
+        # get a config object corresponding to the last settings file, skipping QueryEncryptionStatus settings 
+        # files when find_last_nonquery_operation is True, falling back to archived settings if necessary
+        # note - in the case of nonquery settings file retrieval, when preceded by one or more query settings 
+        # file that are more recent, the config object will not match the active settings file or sequence number
         self._context._config = self.get_last_config(self.find_last_nonquery_operation)
 
         return self._context
 
     def _change_log_file(self):
-        self.log("Change log file to " + self._context._log_file)
+        #self.log("Logging to " + self._context._log_file)
         LoggerInit(self._context._log_file,'/dev/stdout')
         self._log = waagent.Log
         self._error = waagent.Error
@@ -537,10 +552,12 @@ class HandlerUtility:
         if not os.path.exists(self.config_archive_folder):
             os.makedirs(self.config_archive_folder)
 
-        for root, dirs, files in os.walk(os.path.join(self._context._config_dir, '..')):
-            for file in files:
-                if file.endswith('.settings'):
-                    src = os.path.join(root, file)
-                    dest = os.path.join(self.config_archive_folder, file)
-                    self.log("Copying {0} to {1}".format(src, dest))
-                    shutil.copy2(src, dest)
+        # persist only the latest nonquery settings file to archived settings 
+        # and prevent the accumulation of large numbers of obsolete files 
+        src = self.get_last_nonquery_config_path()
+        if src:
+            dest = os.path.join(self.config_archive_folder, 'lnq.settings')
+            if src != dest: 
+                shutil.copy2(src,dest)
+
+        # TODO: save [n].settings file backups in versioned subfolders on uninstall?
