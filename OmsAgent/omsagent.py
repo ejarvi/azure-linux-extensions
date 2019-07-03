@@ -45,7 +45,7 @@ except Exception as e:
 
 # Global Variables
 PackagesDirectory = 'packages'
-BundleFileName = 'omsagent-1.11.0-4.universal.x64.sh'
+BundleFileName = 'omsagent-1.11.0-7.universal.x64.sh'
 GUIDRegex = r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
 GUIDOnlyRegex = r'^' + GUIDRegex + '$'
 SCOMCertIssuerRegex = r'^[\s]*Issuer:[\s]*CN=SCX-Certificate/title=SCX' + GUIDRegex + ', DC=.*$'
@@ -173,6 +173,13 @@ def main():
                       'dependencies are installed. For details, check logs ' \
                       'in /var/log/azure/Microsoft.EnterpriseCloud.' \
                       'Monitoring.OmsAgentForLinux'
+        elif exit_code is 127 and operation == 'Install':
+            # happens if shell bundle couldn't be extracted due to low space or missing dependency
+            exit_code = 52 # since it is a missing dependency
+            message = 'Install failed with exit code 127. Please check that ' \
+                      'dependencies are installed. For details, check logs ' \
+                      'in /var/log/azure/Microsoft.EnterpriseCloud.' \
+                      'Monitoring.OmsAgentForLinux'
         elif exit_code is DPKGLockedErrorCode and operation == 'Install':
             message = 'Install failed with exit code {0} because the ' \
                       'package manager on the VM is currently locked: ' \
@@ -189,9 +196,10 @@ def main():
         message = '{0} failed with error: {1}\n' \
                   'Stacktrace: {2}'.format(operation, e,
                                            traceback.format_exc())
-
+     
     # Finish up and log messages
-    log_and_exit(operation, exit_code, message)
+    log_and_exit(operation, exit_code, message)   
+        
 
 
 def stop_telemetry_process():
@@ -419,32 +427,35 @@ def enable():
                                          check_error = True, log_cmd = False)
 
     # now ensure the permissions and ownership is set recursively
-    workspaceId = public_settings.get('workspaceId')
-    etc_final_path = os.path.join(EtcOMSAgentPath, workspaceId)
-    if (os.path.isdir(etc_final_path)):
-        uid = pwd.getpwnam(AgentUser).pw_uid
-        gid = grp.getgrnam(AgentGroup).gr_gid
-        os.chown(etc_final_path, uid, gid)
+    try:
+        workspaceId = public_settings.get('workspaceId')
+        etc_final_path = os.path.join(EtcOMSAgentPath, workspaceId)
+        if (os.path.isdir(etc_final_path)):
+            uid = pwd.getpwnam(AgentUser).pw_uid
+            gid = grp.getgrnam(AgentGroup).gr_gid
+            os.chown(etc_final_path, uid, gid)
 
-        # octal numbers are represented differently in python 3
-        if sys.version_info >= (3,):
-            os.chmod(etc_final_path, 0o750)
-        else:    
-            os.chmod(etc_final_path, 0750)
+            # octal numbers are represented differently in python 3
+            if sys.version_info >= (3,):
+                os.chmod(etc_final_path, 0o750)
+            else:    
+                os.chmod(etc_final_path, 0750)
 
-        for root, dirs, files in os.walk(etc_final_path):
-            for d in dirs:
-                os.chown(os.path.join(root, d), uid, gid)
-                if sys.version_info >= (3,):
-                    os.chmod(os.path.join(root, d), 0o750)
-                else:    
-                    os.chmod(os.path.join(root, d), 0750)                
-            for f in files:
-                os.chown(os.path.join(root, f), uid, gid)                  
-                if sys.version_info >= (3,):
-                    os.chmod(os.path.join(root, f), 0o640)
-                else:    
-                    os.chmod(os.path.join(root, f), 0640)                           
+            for root, dirs, files in os.walk(etc_final_path):
+                for d in dirs:
+                    os.chown(os.path.join(root, d), uid, gid)
+                    if sys.version_info >= (3,):
+                        os.chmod(os.path.join(root, d), 0o750)
+                    else:    
+                        os.chmod(os.path.join(root, d), 0750)                
+                for f in files:
+                    os.chown(os.path.join(root, f), uid, gid)                  
+                    if sys.version_info >= (3,):
+                        os.chmod(os.path.join(root, f), 0o640)
+                    else:    
+                        os.chmod(os.path.join(root, f), 0640)                           
+    except:
+        hutil_log_info('Failed to set permissions for OMS directories, could potentially have issues uploading.')
 
     if exit_code is 0:
         # Create a marker file to denote the workspace that was
@@ -621,15 +632,30 @@ def is_vm_supported_for_extension():
                        'oracle' : ['6', '7'], # Oracle
                        'debian' : ['8', '9'], # Debian
                        'ubuntu' : ['14.04', '16.04', '18.04'], # Ubuntu
-                       'suse' : ['12'] #SLES
+                       'suse' : ['12'], 'sles' : ['15'] # SLES
     }
+
+    vm_supported = False
 
     try:
         vm_dist, vm_ver, vm_id = platform.linux_distribution()
     except AttributeError:
         vm_dist, vm_ver, vm_id = platform.dist()
 
-    vm_supported = False
+    if not vm_dist and not vm_ver: # SLES 15 and others
+        try:
+            with open('/etc/os-release', 'r') as fp:
+                for line in fp:
+                    if line.startswith('ID='):
+                        vm_dist = line.split('=')[1]
+                        vm_dist = vm_dist.split('-')[0]
+                        vm_dist = vm_dist.replace('\"', '').replace('\n', '')
+                    elif line.startswith('VERSION_ID='):
+                        vm_ver = line.split('=')[1]
+                        vm_ver = vm_ver.split('.')[0]
+                        vm_ver = vm_ver.replace('\"', '').replace('\n', '')
+        except:
+            return vm_supported, 'Indeterminate operating system', ''
 
     # Find this VM distribution in the supported list
     for supported_dist in supported_dists.keys():
@@ -943,16 +969,7 @@ def run_command_and_log(cmd, check_error = True, log_cmd = True):
         hutil_log_info('Output of command "{0}": \n{1}'.format(cmd, output))
     else:
         hutil_log_info('Output: \n{0}'.format(output))
-
-    # also write output to STDOUT since WA agent uploads that to Azlinux Kusto DB
-    try:
-        if sys.version_info >= (3,):
-            print(output)
-        else:    
-            print output        
-    except:
-        hutil_log_info('Failed to write output to STDOUT')
-
+  
     return exit_code, output
 
 

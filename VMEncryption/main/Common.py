@@ -20,7 +20,7 @@
 class CommonVariables:
     utils_path_name = 'Utils'
     extension_name = 'AzureDiskEncryptionForLinux'
-    extension_version = '0.1.0.999337'
+    extension_version = '0.1.0.999339'
     extension_type = extension_name
     extension_media_link = 'https://amextpaas.blob.core.windows.net/prod/' + extension_name + '-' + str(extension_version) + '.zip'
     extension_label = 'Windows Azure VMEncryption Extension for Linux IaaS'
@@ -36,11 +36,18 @@ class CommonVariables:
     min_filesystem_size_support = 52428800 * 3
     #TODO for the sles 11, we should use the ext3
     default_file_system = 'ext4'
+    format_supported_file_systems = ['ext4', 'ext3', 'ext2', 'xfs', 'btrfs']
+    inplace_supported_file_systems = ['ext4', 'ext3', 'ext2']
     default_mount_name = 'encrypted_disk'
     dev_mapper_root = '/dev/mapper/'
     osmapper_name = 'osencrypt'
+    azure_symlinks_dir = '/dev/disk/azure'
     disk_by_id_root = '/dev/disk/by-id'
     disk_by_uuid_root = '/dev/disk/by-uuid'
+    encryption_key_mount_point = '/mnt/azure_bek_disk/'
+    bek_fstab_line_template = 'LABEL=BEK\\040VOLUME {0} auto defaults,discard,nofail 0 0\n'
+    bek_fstab_line_template_ubuntu_14 = 'LABEL=BEK\\040VOLUME {0} auto defaults,discard,nobootwait 0 0\n'
+    etc_defaults_cryptdisks_line = '\nCRYPTDISKS_MOUNT="$CRYPTDISKS_MOUNT {0}"\n'
 
     """
     parameter key names
