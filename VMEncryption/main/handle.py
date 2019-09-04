@@ -1704,7 +1704,8 @@ def daemon_encrypt():
              (distro_name == 'redhat' and distro_version == '7.4') or
              (distro_name == 'redhat' and distro_version == '7.5') or
              (distro_name == 'redhat' and distro_version == '7.6') or
-             (distro_name == 'redhat' and distro_version == '7.7')) and
+             (distro_name == 'redhat' and distro_version == '7.7') or
+             (distro_name == 'redhat' and distro_version == '8.0')) and
             (disk_util.is_os_disk_lvm() or os.path.exists('/volumes.lvm'))):
             from oscrypto.rhel_72_lvm import RHEL72LVMEncryptionStateMachine
             os_encryption = RHEL72LVMEncryptionStateMachine(hutil=hutil,
@@ -1715,7 +1716,8 @@ def daemon_encrypt():
                (distro_name == 'centos' and distro_version.startswith('7.4')) or
                (distro_name == 'centos' and distro_version.startswith('7.5')) or
                (distro_name == 'centos' and distro_version.startswith('7.6')) or
-               (distro_name == 'centos' and distro_version.startswith('7.7'))) and
+               (distro_name == 'centos' and distro_version.startswith('7.7')) or
+               (distro_name == 'centos' and distro_version.startswith('8.0'))) and
               (disk_util.is_os_disk_lvm() or os.path.exists('/volumes.lvm'))):
             from oscrypto.rhel_72_lvm import RHEL72LVMEncryptionStateMachine
             os_encryption = RHEL72LVMEncryptionStateMachine(hutil=hutil,
@@ -1728,6 +1730,8 @@ def daemon_encrypt():
               (distro_name == 'redhat' and distro_version == '7.5') or
               (distro_name == 'redhat' and distro_version == '7.6') or
               (distro_name == 'redhat' and distro_version == '7.7') or
+              (distro_name == 'redhat' and distro_version == '8.0') or
+              (distro_name == 'centos' and distro_version.startswith('8.0')) or
               (distro_name == 'centos' and distro_version.startswith('7.7')) or
               (distro_name == 'centos' and distro_version.startswith('7.6')) or
               (distro_name == 'centos' and distro_version.startswith('7.5')) or
